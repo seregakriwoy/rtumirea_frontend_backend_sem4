@@ -1,0 +1,22 @@
+.card {
+  padding: 16px;
+  background: #222;
+  color: white;
+}
+.card__title {
+  font-size: 20px;
+}
+.card--accent {
+  border: 2px solid #3498db;
+}
+
+.btn {
+  margin: 10px;
+  padding: 10px 14px;
+  background: #3498db;
+  color: white;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+/*# sourceMappingURL=style.css.map */
