@@ -1,0 +1,34 @@
+$primary: #3498db;
+$theme: dark;
+// Миксин для кнопки.
+// Принимает цвет фона в качестве параметра и задаёт базовый внешний вид
+
+@mixin button($color) {
+padding: 10px 14px;
+background: $color;
+color: white;
+border-radius: 8px;
+text-decoration: none;
+}
+// Вложенный элемент карточки
+.card {
+padding: 16px;
+// Условный блок для тёмной темы.
+// Срабатывает только если значение переменной @theme равно dark.
+@if $theme == dark {
+background: #222;
+color: white;
+}
+&__title {
+font-size: 20px;
+}
+// Модификатор карточки с акцентной рамкой
+&--accent {
+border: 2px solid $primary;
+}
+}
+// Кнопка
+.btn {
+// Подключаем миксин и передаём основной цвет
+@include button($primary);
+}
