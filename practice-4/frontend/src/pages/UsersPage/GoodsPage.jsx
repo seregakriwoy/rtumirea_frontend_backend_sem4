@@ -1,108 +1,127 @@
 import React, { useEffect, useState } from "react";
-import "./UsersPage.scss";
-import UsersList from "../../components/UsersList";
-import UserModal from "../../components/UserModal";
+import "./GoodsPage.scss";
+import GoodsList from "../../components/GoodsList";
+import GoodModal from "../../components/GoodModal";
 import { api } from "../../api";
-export default function UsersPage() {
-    const [users, setUsers] = useState([]);
+
+export default function GoodsPage() {
+    const [goods, setGoods] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState("create"); // create | edit
-    const [editingUser, setEditingUser] = useState(null);
+    const [editingGood, setEditingGood] = useState(null);
+
     useEffect(() => {
-        loadUsers();
+        loadGoods();  
     }, []);
-    const loadUsers = async () => {
+
+    const loadGoods = async () => {
         try {
             setLoading(true);
-            const data = await api.getUsers();
-            setUsers(data);
+            const data = await api.getGoods(); // предполагаем такой метод
+            setGoods(data);
         } catch (err) {
             console.error(err);
-            alert("Ошибка загрузки пользователей");
+            alert("Ошибка загрузки товаров");
         } finally {
             setLoading(false);
         }
     };
+
     const openCreate = () => {
         setModalMode("create");
-        setEditingUser(null);
+        setEditingGood(null);
         setModalOpen(true);
     };
-    const openEdit = (user) => {
+
+    const openEdit = (good) => {
         setModalMode("edit");
-        setEditingUser(user);
+        setEditingGood(good);
         setModalOpen(true);
     };
+
     const closeModal = () => {
         setModalOpen(false);
-        setEditingUser(null);
+        setEditingGood(null);
     };
+
     const handleDelete = async (id) => {
-        const ok = window.confirm("Удалить пользователя?");
+        const ok = window.confirm("Удалить товар?");
         if (!ok) return;
+
         try {
-            await api.deleteUser(id);
-            setUsers((prev) => prev.filter((u) => u.id !== id));
+            await api.deleteGood(id); // предполагаем такой метод
+            setGoods((prev) => prev.filter((g) => g.id !== id));
         } catch (err) {
             console.error(err);
-            alert("Ошибка удаления пользователя");
+            alert("Ошибка удаления товара");
         }
     };
+
     const handleSubmitModal = async (payload) => {
         try {
             if (modalMode === "create") {
-                const newUser = await api.createUser(payload);
-                setUsers((prev) => [...prev, newUser]);
+                const newGood = await api.createGood(payload); // предполагаем такой метод
+                setGoods((prev) => [...prev, newGood]);
             } else {
-                const updatedUser = await api.updateUser(payload.id, payload);
-                setUsers((prev) =>
-                    prev.map((u) => (u.id === payload.id ? updatedUser : u))
+                const updatedGood = await api.updateGood(payload.id, payload); // предполагаем такой метод
+                setGoods((prev) =>
+                    prev.map((g) => (g.id === payload.id ? updatedGood : g))
                 );
             }
             closeModal();
         } catch (err) {
             console.error(err);
-            alert("Ошибка сохранения пользователя");
+            alert("Ошибка сохранения товара");
         }
     };
+
     return (
         <div className="page">
             <header className="header">
                 <div className="header__inner">
-                    <div className="brand">Users App</div>
+                    <div className="brand">Goods App</div>
                     <div className="header__right">React</div>
-                </div> </header>
+                </div>
+            </header>
+
             <main className="main">
                 <div className="container">
                     <div className="toolbar">
-                        <h1 className="title">Пользователи</h1>
-                        <button className="btn btn--primary" onClick=
-                            {openCreate}>
+                        <h1 className="title">Товары</h1>
+                        <button 
+                            className="btn btn--primary" 
+                            onClick={openCreate}
+                        >
                             + Создать
                         </button>
                     </div>
+
                     {loading ? (
                         <div className="empty">Загрузка...</div>
                     ) : (
-                        <UsersList
-                            users={users}
+                        <GoodsList
+                            goods={goods}
                             onEdit={openEdit}
                             onDelete={handleDelete}
                         />
                     )}
                 </div>
             </main>
+
             <footer className="footer">
                 <div className="footer__inner">
-                    © {new Date().getFullYear()} Users App
+                    © {new Date().getFullYear()} Goods App
                 </div>
             </footer>
-            <UserModal open={modalOpen}
+
+            <GoodModal 
+                open={modalOpen}
                 mode={modalMode}
-                initialUser={editingUser}
+                initialGood={editingGood}
                 onClose={closeModal}
                 onSubmit={handleSubmitModal}
             />
-        </div>);
+        </div>
+    );
 }

@@ -1,8 +1,8 @@
-import UsersPage from "./pages/UsersPage/UsersPage.jsx";
+import GoodsPage from "./pages/UsersPage/GoodsPage.jsx";
 function App() {
     return (
         <div className="App">
-            <UsersPage />
+            <GoodsPage />
         </div>
     );
 }

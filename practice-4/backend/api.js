@@ -10,10 +10,10 @@ app.use(cors({
     allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
-let users = [
-    { id: nanoid(6), name: 'Петр', age: 16 },
-    { id: nanoid(6), name: 'Иван', age: 18 },
-    { id: nanoid(6), name: 'Дарья', age: 20 },
+let goods = [
+    { id: nanoid(6), name: 'Колбаса', category: "Еда", discription: "Колбаса", cost: 300, amount_in_storage: 1 },
+    { id: nanoid(6), name: 'Сыр', category: "Еда", discription: "Сыр", cost: 200, amount_in_storage:2 },
+    { id: nanoid(6), name: 'Колбасный сыр', category: "Еда", discription: "Сыр со вкусом колбасы", cost: 500, amount_in_storage:3 },
 ]
 
 // Middleware для парсинга JSON
@@ -31,59 +31,65 @@ ${res.statusCode} ${req.path}`);
     next();
 });
 // Функция-помощник для получения пользователя из списка
-function findUserOr404(id, res) {
-    const user = users.find(u => u.id == id);
-    if (!user) {
-        res.status(404).json({ error: "User not found" });
+function findGoodOr404(id, res) {
+    const good = goods.find(u => u.id == id);
+    if (!good) {
+        res.status(404).json({ error: "Good not found" });
         return null;
     }
-    return user;
+    return good;
 }
 // Функция-помощник
-// POST /api/users
-app.post("/api/users", (req, res) => {
-    const { name, age } = req.body;
-    const newUser = {
+// POST /api/goods
+app.post("/api/goods", (req, res) => {
+    const { name, category, discription, cost, amount_in_storage } = req.body;
+    const newGood = {
         id: nanoid(6),
         name: name.trim(),
-        age: Number(age),
+        category: category.trim(),
+        discription: discription.trim(),
+        cost: Number(cost),
+        amount_in_storage: Number(amount_in_storage)
     };
-    users.push(newUser);
-    res.status(201).json(newUser);
+    goods.push(newGood);
+    res.status(201).json(newGood);
 });
-// GET /api/users
-app.get("/api/users", (req, res) => {
-    res.json(users);
+// GET /api/goods
+app.get("/api/goods", (req, res) => {
+    res.json(goods);
 });
-// GET /api/users/:id
-app.get("/api/users/:id", (req, res) => {
+// GET /api/goods/:id
+app.get("/api/goods/:id", (req, res) => {
     const id = req.params.id;
-    const user = findUserOr404(id, res);
-    if (!user) return;
-    res.json(user);
+    const goods = findGoodsOr404(id, res);
+    if (!good) return;
+    res.json(good);
 });
-// PATCH /api/users/:id
-app.patch("/api/users/:id", (req, res) => {
+// PATCH /api/goods/:id
+app.patch("/api/goods/:id", (req, res) => {
     const id = req.params.id;
-    const user = findUserOr404(id, res);
-    if (!user) return;
+    const good = findGoodOr404(id, res);
+    if (!good) return;
     // Нельзя PATCH без полей
     if (req.body?.name === undefined && req.body?.age === undefined) {
         return res.status(400).json({
             error: "Nothing to update",
         });
     }
-    const { name, age } = req.body;
-    if (name !== undefined) user.name = name.trim();
-    if (age !== undefined) user.age = Number(age);
-    res.json(user);
+    const { name, category, discription, cost, amount_in_storage } = req.body;
+    if (name !== undefined) good.name = name.trim();
+    if (category !== undefined) good.category = category.trim();
+    if (discription !== undefined) good.discription = discription.trim();
+    if (cost !== undefined) good.cost = Number(cost);
+    if (amount_in_storage !== undefined) good.amount_in_storage = Number(cost);
+    res.json(good);
 });
-// DELETE /api/users/:id
-app.delete("/api/users/:id", (req, res) => {
+// DELETE /api/goods/:id
+app.delete("/api/goods/:id", (req, res) => {
     const id = req.params.id;
-    const exists = users.some((u) => u.id === id);
-    if (!exists) return res.status(404).json({ error: "User not found" });
-    users = users.filter((u) => u.id !== id);
+    const exists = goods.some((u) => u.id === id);
+    if (!exists) return res.status(404).json({ error: "Good not found" });
+    goods = goods.filter((u) => u.id !== id);
     // Правильнее 204 без тела
     res.status(204).send();
 });
