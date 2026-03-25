@@ -1,12 +1,16 @@
 const express = require('express');
 const { nanoid } = require("nanoid");
 const bcrypt = require('bcrypt');
+const jwt = require("jsonwebtoken");
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const cors = require("cors");
 
 const app = express();
 const port = 3000;
+
+const JWT_SECRET = "access_secret";
+const ACCESS_EXPIRES_IN = "15m";
 
 const swaggerOptions = {
     definition: {
@@ -79,7 +83,95 @@ let goods = [
     { id: nanoid(6), name: 'Колбасный сыр', category: "Еда", discription: "Сыр со вкусом колбасы", cost: 500, amount_in_storage: 3 },
 ];
 
-// Swagger компоненты
+function authMiddleware(req, res, next) {
+    const header = req.headers.authorization || "";
+    const [scheme, token] = header.split(" ");
+    
+    if (scheme !== "Bearer" || !token) {
+        return res.status(401).json({
+            error: "Missing or invalid Authorization header",
+        });
+    }
+    
+    try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        req.user = payload;
+        next();
+    } catch (err) {
+        return res.status(401).json({
+            error: "Invalid or expired token",
+        });
+    }
+}
+
+app.get("/api/auth/me", authMiddleware, (req, res) => {
+    const userId = req.user.sub;
+    const user = users.find(u => u.id === userId);
+    if (!user) {
+        return res.status(404).json({
+            error: "User not found",
+        });
+    }
+    res.json({
+        id: user.id,
+        username: user.username,
+    });
+});
+
+app.post("/api/auth/register", async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({
+            error: "username and password are required",
+        });
+    }
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = {
+        id: String(users.length + 1),
+        username,
+        passwordHash,
+    };
+    users.push(user);
+    res.status(201).json({
+        id: user.id,
+        username: user.username,
+    });
+});
+
+app.post("/api/auth/login", async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({
+            error: "username and password are required",
+        });
+    }
+    const user = users.find(u => u.username === username);
+    if (!user) {
+        return res.status(401).json({
+            error: "Invalid credentials",
+        });
+    }
+    const isValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isValid) {
+        return res.status(401).json({
+            error: "Invalid credentials",
+        });
+    }
+    const accessToken = jwt.sign(
+        {
+            sub: user.id,
+            username: user.username,
+        },
+        JWT_SECRET,
+        {
+            expiresIn: ACCESS_EXPIRES_IN,
+        }
+    );
+    res.json({
+        accessToken,
+    });
+});
+
 /**
  * @swagger
  * components:
@@ -210,7 +302,7 @@ app.get("/api/goods", (req, res) => {
  *       404:
  *         description: Товар не найден
  */
-app.get("/api/goods/:id", (req, res) => {
+app.get("/api/goods/:id", authMiddleware, (req, res) => {
     const id = req.params.id;
     const good = findGoodOr404(id, res);
     if (!good) return;
@@ -304,7 +396,7 @@ app.patch("/api/goods/:id", (req, res) => {
  *       404:
  *         description: Товар не найден
  */
-app.delete("/api/goods/:id", (req, res) => {
+app.delete("/api/goods/:id", authMiddleware, (req, res) => {
     const id = req.params.id;
     const exists = goods.some((u) => u.id === id);
     if (!exists) return res.status(404).json({ error: "Good not found" });
@@ -313,132 +405,31 @@ app.delete("/api/goods/:id", (req, res) => {
     res.status(204).send();
 });
 
-
-/**
- * @swagger
- * /api/auth/register:
- *   post:
- *     summary: Регистрация пользователя
- *     description: Создает нового пользователя с хешированным паролем
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - username
- *               - password
- *               - age
- *             properties:
- *               username:
- *                 type: string
- *                 example: "ivan"
- *               password:
- *                 type: string
- *                 example: "qwerty123"
- *               age:
- *                 type: integer
- *                 example: 20
- *     responses:
- *       201:
- *         description: Пользователь успешно создан
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 username:
- *                   type: string
- *                 age:
- *                   type: integer
- *                 hashedPassword:
- *                   type: string
- *       400:
- *         description: Некорректные данные
- */
-app.post("/api/auth/register", async (req, res) => {
-    const { username, age, password } = req.body;
-    if (!username || !password || age === undefined) {
-        return res.status(400).json({
-            error: "username, password and age are required"
-        });
+app.put("/api/goods/:id", authMiddleware, (req, res) => {
+    const id = req.params.id;
+    const { name, category, discription, cost, amount_in_storage } = req.body;
+    
+    const goodIndex = goods.findIndex(g => g.id === id);
+    
+    if (goodIndex === -1) {
+        return res.status(404).json({ error: "Good not found" });
     }
     
-    const existingUser = users.find(u => u.username === username);
-    if (existingUser) {
-        return res.status(400).json({
-            error: "User already exists"
-        });
+    if (!name || !category || cost === undefined || amount_in_storage === undefined) {
+        return res.status(400).json({ error: "Missing required fields: name, category, cost, amount_in_storage" });
     }
     
-    const newUser = {
-        username: username,
-        age: Number(age),
-        hashedPassword: await hashPassword(password)
+    const updatedGood = {
+        id: id,
+        name: name.trim(),
+        category: category.trim(),
+        discription: discription ? discription.trim() : "",
+        cost: Number(cost),
+        amount_in_storage: Number(amount_in_storage)
     };
-    users.push(newUser);
-    res.status(201).json(newUser);
-});
-
-/**
- * @swagger
- * /api/auth/login:
- *   post:
- *     summary: Авторизация пользователя
- *     description: Проверяет логин и пароль пользователя
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - username
- *               - password
- *             properties:
- *               username:
- *                 type: string
- *                 example: "ivan"
- *               password:
- *                 type: string
- *                 example: "qwerty123"
- *     responses:
- *       200:
- *         description: Успешная авторизация
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 login:
- *                   type: boolean
- *       400:
- *         description: Отсутствуют обязательные поля
- *       401:
- *         description: Неверные учетные данные
- *       404:
- *         description: Пользователь не найден
- */
-app.post("/api/auth/login", async (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) {
-        return res.status(400).json({
-            error: "username and password are required"
-        });
-    }
     
-    const user = findUserOr404(username, res);
-    if (!user) return;
-
-    const isAuthenticated = await verifyPassword(password, user.hashedPassword);
-    if (isAuthenticated) {
-        res.status(200).json({ login: true });
-    } else {
-        res.status(401).json({ error: "not authenticated" });
-    }
+    goods[goodIndex] = updatedGood;
+    res.json(updatedGood);
 });
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
