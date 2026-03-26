@@ -21,6 +21,15 @@ const LoginModal = () => {
         if (!result.success) {
             setError(result.error);
             setLoading(false);
+        } else {
+            if (!isLogin) {
+                // После успешной регистрации переходим на вход
+                setError('');
+                setUsername('');
+                setPassword('');
+                setIsLogin(true);
+            }
+            setLoading(false);
         }
     };
 

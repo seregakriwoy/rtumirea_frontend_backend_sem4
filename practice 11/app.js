@@ -34,7 +34,7 @@ const swaggerOptions = {
 
 app.use(cors({
     origin: "http://localhost:3001",
-    methods: ["GET", "POST", "PATCH", "DELETE"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
@@ -111,6 +111,14 @@ function roleMiddleware(allowedRoles) {
         }
         next();
     };
+}
+
+function findUserById(id) {
+    return users.find(u => u.id === id);
+}
+
+function findUserByUsername(username) {
+    return users.find(u => u.username === username);
 }
 
 function findGoodOr404(id, res) {
@@ -398,6 +406,7 @@ app.get("/api/auth/me", authMiddleware, roleMiddleware(["user", "seller", "admin
     res.json({
         id: user.id,
         username: user.username,
+        role: user.role,
     });
 });
 
@@ -423,7 +432,8 @@ app.post("/api/auth/register", async (req, res) => {
         id: String(users.length + 1),
         username,
         passwordHash,
-        role: "user"
+        role: users.length === 0 ? "admin" : "user",
+        isActive: true
     };
     users.push(user);
     res.status(201).json({
