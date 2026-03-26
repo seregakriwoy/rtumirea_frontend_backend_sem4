@@ -58,6 +58,7 @@ function generateAccessToken(user) {
         {
             sub: user.id,
             username: user.username,
+            role: user.role,
         },
         ACCESS_SECRET,
         {
@@ -71,6 +72,7 @@ function generateRefreshToken(user) {
         {
             sub: user.id,
             username: user.username,
+            role: user.role,
         },
         REFRESH_SECRET,
         {
@@ -213,7 +215,7 @@ app.post("/api/goods", authMiddleware,  roleMiddleware(["seller", "admin"]), (re
     res.status(201).json(newGood);
 });
 
-app.put("/api/goods/:id", authMiddleware, roleMiddleware(["seller", "admin"]), (req, res)) => {
+app.put("/api/goods/:id", authMiddleware, roleMiddleware(["seller", "admin"]), (req, res) => {
     const id = req.params.id;
     const { name, category, discription, cost, amount_in_storage } = req.body;
     
@@ -235,7 +237,7 @@ app.put("/api/goods/:id", authMiddleware, roleMiddleware(["seller", "admin"]), (
         cost: Number(cost),
         amount_in_storage: Number(amount_in_storage)
     };
-}
+});
 
 /**
  * @swagger
@@ -383,7 +385,7 @@ app.delete("/api/goods/:id", authMiddleware, roleMiddleware(["admin"]), (req, re
     res.status(204).send();
 });
 
-app.get("/api/auth/me",  roleMiddleware(["user", "seller", "admin"]), authMiddleware, (req, res) => {
+app.get("/api/auth/me", authMiddleware, roleMiddleware(["user", "seller", "admin"]), (req, res) => {
     const userId = req.user.sub;
     const user = users.find(u => u.id === userId);
 
@@ -399,7 +401,7 @@ app.get("/api/auth/me",  roleMiddleware(["user", "seller", "admin"]), authMiddle
     });
 });
 
-app.post("/api/auth/register",  roleMiddleware(["guest", "user", "seller", "admin"]), async (req, res) => {
+app.post("/api/auth/register", async (req, res) => {
     const { username, password } = req.body;
 
     if (!username || !password) {
@@ -421,7 +423,7 @@ app.post("/api/auth/register",  roleMiddleware(["guest", "user", "seller", "admi
         id: String(users.length + 1),
         username,
         passwordHash,
-        role: role || "user"
+        role: "user"
     };
     users.push(user);
     res.status(201).json({
@@ -431,7 +433,7 @@ app.post("/api/auth/register",  roleMiddleware(["guest", "user", "seller", "admi
     });
 });
 
-app.post("/api/auth/login", roleMiddleware(["guest", "user", "seller", "admin"]), async (req, res) => {
+app.post("/api/auth/login", async (req, res) => {
     const { username, password } = req.body;
 
     if (!username || !password) {
@@ -464,7 +466,7 @@ app.post("/api/auth/login", roleMiddleware(["guest", "user", "seller", "admin"])
     });
 });
 
-app.post("/api/auth/refresh", roleMiddleware(["guest", "user", "seller", "admin"]), (req, res) => {
+app.post("/api/auth/refresh", (req, res) => {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
