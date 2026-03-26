@@ -183,7 +183,7 @@ let goods = [
  *       400:
  *         description: Ошибка валидации
  */
-app.post("/api/goods", (req, res) => {
+app.post("/api/goods", authMiddleware, (req, res) => {
     const { name, category, discription, cost, amount_in_storage } = req.body;
 
     if (!name || !category || cost === undefined || amount_in_storage === undefined) {
@@ -218,7 +218,7 @@ app.post("/api/goods", (req, res) => {
  *               items:
  *                 $ref: '#/components/schemas/Good'
  */
-app.get("/api/goods", (req, res) => {
+app.get("/api/goods", authMiddleware, (req, res) => {
     res.json(goods);
 });
 
@@ -245,7 +245,7 @@ app.get("/api/goods", (req, res) => {
  *       404:
  *         description: Товар не найден
  */
-app.get("/api/goods/:id", (req, res) => {
+app.get("/api/goods/:id", authMiddleware, (req, res) => {
     const id = req.params.id;
     const good = findGoodOr404(id, res);
     if (!good) return;
@@ -294,7 +294,7 @@ app.get("/api/goods/:id", (req, res) => {
  *       404:
  *         description: Товар не найден
  */
-app.patch("/api/goods/:id", (req, res) => {
+app.patch("/api/goods/:id", authMiddleware, (req, res) => {
     const id = req.params.id;
     const good = findGoodOr404(id, res);
     if (!good) return;
@@ -339,7 +339,7 @@ app.patch("/api/goods/:id", (req, res) => {
  *       404:
  *         description: Товар не найден
  */
-app.delete("/api/goods/:id", (req, res) => {
+app.delete("/api/goods/:id", authMiddleware, (req, res) => {
     const id = req.params.id;
     const exists = goods.some((u) => u.id === id);
     if (!exists) return res.status(404).json({ error: "Good not found" });

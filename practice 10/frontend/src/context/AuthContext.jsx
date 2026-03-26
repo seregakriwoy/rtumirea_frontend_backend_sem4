@@ -1,73 +1,53 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import api from '../api';
+import axios from 'axios';
+import { setApiToken } from '../api/index.js';
+
+// Создаем отдельный экземпляр axios для авторизации
+const apiClient = axios.create({
+    baseURL: "http://localhost:3000/api",
+    headers: {
+        "Content-Type": "application/json",
+    }
+});
 
 const AuthContext = createContext(null);
 
 export const useAuth = () => useContext(AuthContext);
 
-useEffect(() => {
-    const checkAuth = async () => {
-        if (accessToken) {
-            try {
-                const response = await api.get('/auth/me').catch(err => {
-                    console.error('Error in /auth/me:', err);
-                    return null;
-                });
-                
-                if (response && response.data) {
-                    setUser(response.data);
-                } else {
-                    logout();
-                }
-            } catch (error) {
-                console.error('Auth check failed:', error);
-                logout();
-            }
-        }
-        setLoading(false);
-    };
-
-    checkAuth();
-}, []);
-
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [accessToken, setAccessToken] = useState(localStorage.getItem('accessToken'));
-    const [refreshToken, setRefreshToken] = useState(localStorage.getItem('refreshToken'));
 
-    useEffect(() => {
-        if (accessToken) {
-            api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+    // Функция для установки токена в заголовки обоих apiClient
+    const setAuthToken = (token) => {
+        if (token) {
+            apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            setApiToken(token);
         } else {
-            delete api.defaults.headers.common['Authorization'];
+            delete apiClient.defaults.headers.common['Authorization'];
+            setApiToken(null);
         }
-    }, [accessToken]);
+    };
 
     useEffect(() => {
         const checkAuth = async () => {
-            if (accessToken) {
+            const token = localStorage.getItem('accessToken');
+            console.log('Token found:', !!token);
+            
+            if (token) {
                 try {
-                    const response = await api.get('/auth/me');
+                    // Устанавливаем токен для запросов
+                    setAuthToken(token);
+                    
+                    const response = await apiClient.get('/auth/me');
+                    console.log('User data:', response.data);
                     setUser(response.data);
                 } catch (error) {
-                    if (refreshToken) {
-                        try {
-                            const refreshResponse = await api.post('/auth/refresh', { refreshToken });
-                            const { accessToken: newAccessToken, refreshToken: newRefreshToken } = refreshResponse.data;
-                            setAccessToken(newAccessToken);
-                            setRefreshToken(newRefreshToken);
-                            localStorage.setItem('accessToken', newAccessToken);
-                            localStorage.setItem('refreshToken', newRefreshToken);
-                            
-                            const userResponse = await api.get('/auth/me');
-                            setUser(userResponse.data);
-                        } catch (refreshError) {
-                            logout();
-                        }
-                    } else {
-                        logout();
-                    }
+                    console.error('Auth error:', error);
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('refreshToken');
+                    setAuthToken(null);
+                    setUser(null);
                 }
             }
             setLoading(false);
@@ -78,39 +58,44 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (username, password) => {
         try {
-            const response = await api.post('/auth/login', { username, password });
-            const { accessToken: newAccessToken, refreshToken: newRefreshToken } = response.data;
+            const response = await apiClient.post('/auth/login', { username, password });
+            const { accessToken, refreshToken } = response.data;
             
-            setAccessToken(newAccessToken);
-            setRefreshToken(newRefreshToken);
-            localStorage.setItem('accessToken', newAccessToken);
-            localStorage.setItem('refreshToken', newRefreshToken);
+            localStorage.setItem('accessToken', accessToken);
+            localStorage.setItem('refreshToken', refreshToken);
             
-            const userResponse = await api.get('/auth/me');
+            // Устанавливаем токен для будущих запросов
+            setAuthToken(accessToken);
+            
+            const userResponse = await apiClient.get('/auth/me');
             setUser(userResponse.data);
             
             return { success: true };
         } catch (error) {
-            return { success: false, error: error.response?.data?.error || 'Login failed' };
+            console.error('Login error:', error);
+            // Добавляем проверку на существование error.response
+            const errorMessage = error.response?.data?.error || error.message || 'Login failed';
+            return { success: false, error: errorMessage };
         }
     };
 
     const register = async (username, password) => {
         try {
-            const response = await api.post('/auth/register', { username, password });
+            const response = await apiClient.post('/auth/register', { username, password });
+            // После регистрации сразу логинимся
             return await login(username, password);
         } catch (error) {
-            return { success: false, error: error.response?.data?.error || 'Registration failed' };
+            console.error('Register error:', error);
+            const errorMessage = error.response?.data?.error || error.message || 'Registration failed';
+            return { success: false, error: errorMessage };
         }
     };
 
     const logout = () => {
         setUser(null);
-        setAccessToken(null);
-        setRefreshToken(null);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        delete api.defaults.headers.common['Authorization'];
+        setAuthToken(null);
     };
 
     return (

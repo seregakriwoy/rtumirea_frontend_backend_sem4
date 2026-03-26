@@ -2,8 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import LoginModal from './components/LoginModal.jsx';
-import GoodsList from './components/GoodsList.jsx';
-import GoodPage from './pages/UsersPage/GoodsPage.jsx';
+import GoodsPage from './pages/UsersPage/GoodsPage.jsx';
 
 const ProtectedRoute = ({ children }) => {
     const { user, loading } = useAuth();
@@ -35,12 +34,7 @@ const AppContent = () => {
             <Routes>
                 <Route path="/" element={
                     <ProtectedRoute>
-                        <GoodsList />
-                    </ProtectedRoute>
-                } />
-                <Route path="/goods/:id" element={
-                    <ProtectedRoute>
-                        <GoodPage />
+                        <GoodsPage />
                     </ProtectedRoute>
                 } />
             </Routes>

@@ -18,7 +18,7 @@ export default function GoodsPage() {
     const loadGoods = async () => {
         try {
             setLoading(true);
-            const data = await api.getGoods(); // предполагаем такой метод
+            const data = await api.getGoods();
             setGoods(data);
         } catch (err) {
             console.error(err);
@@ -50,7 +50,7 @@ export default function GoodsPage() {
         if (!ok) return;
 
         try {
-            await api.deleteGood(id); // предполагаем такой метод
+            await api.deleteGood(id);
             setGoods((prev) => prev.filter((g) => g.id !== id));
         } catch (err) {
             console.error(err);
@@ -61,10 +61,10 @@ export default function GoodsPage() {
     const handleSubmitModal = async (payload) => {
         try {
             if (modalMode === "create") {
-                const newGood = await api.createGood(payload); // предполагаем такой метод
+                const newGood = await api.createGood(payload);
                 setGoods((prev) => [...prev, newGood]);
             } else {
-                const updatedGood = await api.updateGood(payload.id, payload); // предполагаем такой метод
+                const updatedGood = await api.updateGood(payload.id, payload);
                 setGoods((prev) =>
                     prev.map((g) => (g.id === payload.id ? updatedGood : g))
                 );
