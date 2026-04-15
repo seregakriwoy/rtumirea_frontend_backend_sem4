@@ -54,3 +54,6 @@ Thumbs.db
 # Frontend specific (Vite/CRA)
 /build
 /dist
+
+#HTTPS keys
+.pem
