@@ -1,0 +1,54 @@
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - app-network
+
+  api_gateway:
+    build: api_gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - app-network
+
+  service_users1:
+    build: service_users
+    environment:
+      - PORT=8001
+      - INSTANCE_ID=1
+    networks:
+      - app-network
+
+  service_users2:
+    build: service_users
+    environment:
+      - PORT=8002
+      - INSTANCE_ID=2
+    networks:
+      - app-network
+
+  service_orders1:
+    build: service_orders
+    environment:
+      - PORT=8003
+      - INSTANCE_ID=1
+    networks:
+      - app-network
+
+  service_orders2:
+    build: service_orders
+    environment:
+      - PORT=8004
+      - INSTANCE_ID=2
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
