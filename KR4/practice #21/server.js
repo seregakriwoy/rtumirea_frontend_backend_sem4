@@ -2,6 +2,7 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { createClient } = require("redis");
+const { nanoid } = require("nanoid");
 const app = express();
 app.use(express.json());
 const PORT = 3000;
@@ -157,10 +158,22 @@ async function invalidateUsersCache(userId = null) {
     }
 }
 
+// Удаление кэша товаров
+async function invalidateProductsCache(productId = null) {
+    try {
+        await redisClient.del("goods:all");
+        if (productId) {
+            await redisClient.del(`goods:${productId}`);
+        }
+    } catch (err) {
+        console.error("Products cache invalidate error:", err);
+    }
+}
+
 let goods = [
-    { id: nanoid(6), name: 'Колбаса', category: "Еда", discription: "Колбаса", cost: 300, amount_in_storage: 1 },
-    { id: nanoid(6), name: 'Сыр', category: "Еда", discription: "Сыр", cost: 200, amount_in_storage: 2 },
-    { id: nanoid(6), name: 'Колбасный сыр', category: "Еда", discription: "Сыр со вкусом колбасы", cost: 500, amount_in_storage: 3 },
+    { id: nanoid(6), name: 'Колбаса', category: "Еда", description: "Колбаса", cost: 300, amount_in_storage: 1 },
+    { id: nanoid(6), name: 'Сыр', category: "Еда", description: "Сыр", cost: 200, amount_in_storage: 2 },
+    { id: nanoid(6), name: 'Колбасный сыр', category: "Еда", description: "Сыр со вкусом колбасы", cost: 500, amount_in_storage: 3 },
 ];
 
 // ---------------- AUTH ----------------
@@ -407,8 +420,7 @@ app.put("/api/users/:id", authMiddleware, roleMiddleware(["admin"]), async (req,
     }
 });
 
-
-// Удалить пользователя (опционально)
+// Удалить пользователя
 app.delete("/api/users/:id", authMiddleware, roleMiddleware(["admin"]), async (req, res) => {
     try {
         const userIndex = users.findIndex((u) => u.id === req.params.id);
@@ -429,7 +441,6 @@ app.delete("/api/users/:id", authMiddleware, roleMiddleware(["admin"]), async (r
                     refreshTokens.delete(token);
                 }
             } catch (err) {
-                // Токен невалидный, просто удаляем
                 refreshTokens.delete(token);
             }
         }
@@ -447,56 +458,62 @@ app.delete("/api/users/:id", authMiddleware, roleMiddleware(["admin"]), async (r
     }
 });
 
+// ---------------- PRODUCTS ----------------
+// Получить все товары
 app.get("/api/products", authMiddleware, roleMiddleware(["user", "seller", "admin"]), cacheMiddleware(() => "goods:all", PRODUCTS_CACHE_TTL), async (req, res) => {
     try {
-        await saveToCache(req.cacheKey, data, req.cacheTTL);
+        const data = goods.map((item) => ({
+            id: item.id,
+            name: item.name,
+            category: item.category,
+            description: item.description,
+            cost: item.cost,
+            amount_in_storage: item.amount_in_storage
+        }));
 
-        const data = goods.map((u) => ({
-            id: u.id,
-            name: u.name,
-            category: u.category,
-            discription: u.discription,
-            cost: u.cost
-        }))
+        await saveToCache(req.cacheKey, data, req.cacheTTL);
 
         res.json({
             source: "server",
             data
         });
     } catch (error) {
-        console.error("Error fetching users:", error);
+        console.error("Error fetching products:", error);
         res.status(500).json({ error: "Internal server error" });
     }
 });
 
-app.get("/api/products/:id", authMiddleware, roleMiddleware(["user", "seller", "admin"]), cacheMiddleware((req) => `goods:${req.params.id}`, PRODUCTS_CACHE_TTL), async (req, res) =>
-    {try {
-        const product = goods.find((u) => u.id === req.params.id)
+// Получить товар по id
+app.get("/api/products/:id", authMiddleware, roleMiddleware(["user", "seller", "admin"]), cacheMiddleware((req) => `goods:${req.params.id}`, PRODUCTS_CACHE_TTL), async (req, res) => {
+    try {
+        const product = goods.find((item) => item.id === req.params.id);
 
-        if (!product){
+        if (!product) {
             return res.status(404).json({
-                    error: "Product not found"
-        })}
+                error: "Product not found"
+            });
+        }
 
         const data = {
             id: product.id,
             name: product.name,
             category: product.category,
-            discription: product.discription,
-            cost: product.cost
-        }
+            description: product.description,
+            cost: product.cost,
+            amount_in_storage: product.amount_in_storage
+        };
 
         await saveToCache(req.cacheKey, data, req.cacheTTL);
 
-            res.json({
-                source: "server",
-                data
-            });
-    } catch(error){
-        console.error("Error fetching user:", error);
+        res.json({
+            source: "server",
+            data
+        });
+    } catch (error) {
+        console.error("Error fetching product:", error);
         res.status(500).json({ error: "Internal server error" });
     }
-})
+});
 
 // Запуск сервера
 initRedis().then(() => {
@@ -505,7 +522,6 @@ initRedis().then(() => {
     });
 }).catch((error) => {
     console.error("Failed to initialize Redis:", error);
-    // Запускаем сервер даже без Redis
     app.listen(PORT, () => {
         console.log(`Сервер запущен на http://localhost:${PORT} (без Redis кэширования)`);
     });
